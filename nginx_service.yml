@@ -1,0 +1,19 @@
+---
+- name: Налаштування поведінки сервісу Nginx
+  hosts: all
+  become: yes
+  tasks:
+    - name: Переконатися, що Nginx встановлений
+      apt:
+        name: nginx
+        state: present
+
+    - name: Увімкнути автозапуск Nginx при старті системи
+      service:
+        name: nginx
+        enabled: yes
+
+    - name: Переконатися, що сервіс Nginx зараз запущений
+      service:
+        name: nginx
+        state: started

@@ -1,0 +1,24 @@
+---
+- name: Встановлення Nginx та PHP на хост-машину
+  hosts: all
+  become: yes  # Виконувати команди з правами sudo
+  tasks:
+    - name: Оновлення кешу пакетів (apt update)
+      apt:
+        update_cache: yes
+
+    - name: Встановлення Nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Встановлення PHP
+      apt:
+        name: php-fpm
+        state: present
+
+    - name: Перевірка, що Nginx запущено
+      service:
+        name: nginx
+        state: started
+        enabled: yes
