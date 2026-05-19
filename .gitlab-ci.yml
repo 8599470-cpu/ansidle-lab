@@ -1,0 +1,30 @@
+deploy-job:
+  stage: deploy
+  image: alpine:latest # Використовуємо легкий образ Linux для виконання деплою
+  before_script:
+    # Встановлюємо SSH-клієнт та створюємо папку .ssh всередині контейнера раннера
+    - apk add --no-cache openssh-client
+    - mkdir -p ~/.ssh
+    # Відновлюємо приватний ключ із нашої змінної GitLab
+    - echo "$SSH_PRIVATE_KEY_B64" | base64 -d > ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    # Додаємо наш тестовий сервер у відомі хости, щоб раннер не запитував підтвердження
+    - ssh-keyscan 192.168.1.2 >> ~/.ssh/known_hosts
+
+  script:
+    - echo "=== Початок деплою на тестовий сервер ==="
+    
+    # 1. Логінимось у GitLab Registry прямо З ТЕСТОВОГО СЕРВЕРА
+    - ssh mint@192.168.1.2 "docker login registry.gitlab.com -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD"
+    
+    # 2. Завантажуємо (pull) наш свіжий образ, який щойно зібрав build-job
+    - ssh mint@192.168.1.2 "docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+    
+    # 3. Зупиняємо та видаляємо старий контейнер, якщо він вже працює (щоб не було конфлікту імен і портів)
+    # Конструкція "|| true" потрібна, щоб білд не впав з помилкою, якщо контейнера ще не існує
+    - ssh mint@192.168.1.2 "docker stop my-web-app || true && docker rm my-web-app || true"
+    
+    # 4. Запускаємо наш новий контейнер на 80-му порту (веб-сервер)
+    - ssh mint@192.168.1.2 "docker run -d --name my-web-app -p 80:80 $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+    
+    - echo "=== Деплой успішно завершено! ==="
